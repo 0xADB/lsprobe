@@ -77,7 +77,7 @@ ls ../*.deb
 
 ## References
 
-https://blog.ptsecurity.com/2012/09/writing-linux-security-module.html
-https://www.maketecheasier.com/build-custom-kernel-ubuntu/
-https://elixir.bootlin.com
-http://dazuko.dnsalias.org
+- https://blog.ptsecurity.com/2012/09/writing-linux-security-module.html
+- https://www.maketecheasier.com/build-custom-kernel-ubuntu/
+- https://elixir.bootlin.com
+- http://dazuko.dnsalias.org
