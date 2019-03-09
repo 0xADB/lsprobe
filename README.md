@@ -1,6 +1,6 @@
 # lsprobe
 
-A permissive linux security module for logging security ops.
+A toy permissive linux security module for logging security ops.
 
 ## Building for Ubuntu Xenial
 
