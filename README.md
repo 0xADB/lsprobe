@@ -81,3 +81,4 @@ ls ../*.deb
 - https://www.maketecheasier.com/build-custom-kernel-ubuntu/
 - https://elixir.bootlin.com
 - http://dazuko.dnsalias.org
+- https://kernelnewbies.org/KernelBuild
