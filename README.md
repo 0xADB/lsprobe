@@ -21,33 +21,26 @@ Get kernel sources and put module sourcess into `security` folder:
 ```
 git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 cd ./linux-stable
-git checkout tags/v5.0
-cd ./security
-git clone https://github.com/0xADB/lsprobe.git
+git checkout -b stable v5.0
+cd ./security/
+git clone https://github.com/0xADB/lsprobe.git && rm -rf ./lsprobe/.git
 cd ..
 ```
 Add to `security/Kconfig`:
 ```
-source security/lsprobe/Kconfig
-```
-after similar lines before the `choice` block.
+source "security/integrity/Kconfig"
+source "security/lsprobe/Kconfig" # <-- this line
 
+```
 Add to `security/Makefile`:
-- after
 ```
 subdir-$(CONFIG_SECURITY_YAMA)         += yama
-```
-line:
-```
-subdir-$(CONFIG_SECURITY_LSPROBE)      += lsprobe
-```
-- after
-```
+subdir-$(CONFIG_SECURITY_LSPROBE)      += lsprobe # <--this line
+
+...
+
 obj-$(CONFIG_SECURITYFS)               += inode.o
-```
-line
-```
-obj-$(CONFIG_SECURITY_LSPROBE)         += lsprobe/
+obj-$(CONFIG_SECURITY_LSPROBE)         += lsprobe/ # <-- and this line
 ```
 
 ### Configuration
@@ -63,16 +56,42 @@ make menuconfig
 ```
 selecting in the `Security options` directory the `Security probe` entry.
 
-### Building
+
+### Building package
 
 In the `linux-stable` directory:
 ```
-make clean
-make -j $(getconf _NPROCESSORS_ONLN) deb-pkg LOCALVERSION="+lsprobed"
+rm vmlinux-gdb.py # see Note below
+make -j $(getconf _NPROCESSORS_ONLN) deb-pkg LOCALVERSION="-lsprobed"
 ```
 On success the .deb package will be in the directory above:
 ```
 ls ../*.deb
+```
+
+### Building just kernel
+
+In the `linux-stable` directory:
+```
+make -j $(getconf _NPROCESSORS_ONLN) deb-pkg LOCALVERSION="-lsprobed"
+sudo make modules_install install
+sudo update-grub2
+```
+
+### Note
+
+It is recommended to perform `make deb-pkg` on freshly downloaded sources. Otherwise, in `linux-stable` remove `vmlinux-gdb.py` symbolic link or dpkg-source will complain:
+```
+dpkg-source: error: cannot represent change to vmlinux-gdb.py:
+dpkg-source: error:   new version is symlink to /mnt/shared_workspace/src/linux-stable/scripts/gdb/vmlinux-gdb.py
+dpkg-source: error:   old version is nonexistent
+...
+dpkg-source: error: unrepresentable changes to source
+dpkg-buildpackage: error: dpkg-source -i.git -b linux-stable gave error exit status 1
+scripts/package/Makefile:70: recipe for target 'deb-pkg' failed
+make[1]: *** [deb-pkg] Error 1
+Makefile:1390: recipe for target 'deb-pkg' failed
+make: *** [deb-pkg] Error 2
 ```
 
 ## References
