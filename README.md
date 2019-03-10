@@ -47,7 +47,7 @@ obj-$(CONFIG_SECURITYFS)               += inode.o
 ```
 line
 ```
-obj-$(CONFIG_SECURITY_LSPROBE)         += lsprobe/lsprobe.o
+obj-$(CONFIG_SECURITY_LSPROBE)         += lsprobe/
 ```
 
 ### Configuration
