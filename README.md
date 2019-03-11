@@ -11,11 +11,11 @@ A toy permissive linux security module for security ops researching.
 
 ### Dependencies
 
-#### Ubuntu 16.04:
+- Ubuntu 16.04:
 ```
 sudo apt-get install git build-essential kernel-package fakeroot libncurses5-dev libssl-dev 
 ```
-#### Debian 9
+- Debian 9
 ```
 apt-get install git build-essential fakeroot libncurses5-dev libssl-dev libelf-dev bison flex
 ```
