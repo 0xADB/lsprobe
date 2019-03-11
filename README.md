@@ -28,7 +28,7 @@ git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 cd ./linux-stable
 git checkout -b stable v5.0
 cd ./security/
-git clone https://github.com/0xADB/lsprobe.git && rm -rf ./lsprobe/.git
+git clone https://github.com/0xADB/lsprobe.git
 cd ..
 ```
 Add to `security/Kconfig`:
