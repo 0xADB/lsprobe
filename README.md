@@ -3,14 +3,10 @@
 A toy permissive linux security module for security ops researching.
 
 ## Building
-
 ### Prerequisites
-
 - About 23 GB of the hard drive space (about 2.5 GB for sources plus 20 GB to build packages)
 - 2-3 hours on 2 x86 cores with 4Gb RAM (see Notes)
-
 ### Dependencies
-
 - Ubuntu 16.04:
 ```
 sudo apt-get install git build-essential kernel-package fakeroot libncurses5-dev libssl-dev 
@@ -19,9 +15,7 @@ sudo apt-get install git build-essential kernel-package fakeroot libncurses5-dev
 ```
 apt-get install git build-essential fakeroot libncurses5-dev libssl-dev libelf-dev bison flex
 ```
-
 ### Sources
-
 Get kernel sources and put module sourcess into `security` folder:
 ```
 git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
@@ -35,21 +29,16 @@ Add to `security/Kconfig`:
 ```
 source "security/integrity/Kconfig"
 source "security/lsprobe/Kconfig" # <-- this line
-
 ```
 Add to `security/Makefile`:
 ```
 subdir-$(CONFIG_SECURITY_YAMA)         += yama
 subdir-$(CONFIG_SECURITY_LSPROBE)      += lsprobe # <--this line
-
 ...
-
 obj-$(CONFIG_SECURITY_YAMA)            += yama/
 obj-$(CONFIG_SECURITY_LSPROBE)         += lsprobe/ # <-- and this line
 ```
-
 ### Configuration
-
 Go to the `linux-stable` directory and clone current config and adapt it choosing default answers:
 ```
 cp /boot/config-$(uname -r) .config
@@ -60,31 +49,24 @@ Customize it by
 make menuconfig
 ```
 selecting in the `Security options` directory the `Security probe` entry.
-
-
 ### Building package
-
 In the `linux-stable` directory:
 ```
-rm vmlinux-gdb.py # see Note below
+rm vmlinux-gdb.py # see Notes
 make -j $(getconf _NPROCESSORS_ONLN) deb-pkg LOCALVERSION="-lsprobed"
 ```
 On success the .deb package will be in the directory above:
 ```
 ls ../*.deb
 ```
-
 ### Building just kernel
-
 In the `linux-stable` directory:
 ```
 make -j $(getconf _NPROCESSORS_ONLN) LOCALVERSION="-lsprobed"
 sudo make modules_install install
 sudo update-grub2
 ```
-
 ### Notes
-
 - Before building `dep-pkg` target remove `vmlinux-gdb.py` symbolic link in `linux-stable` if any or dpkg-source will complain:
 ```
 dpkg-source: error: cannot represent change to vmlinux-gdb.py:
@@ -125,7 +107,6 @@ $ du -hs ./*
 ```
 
 ## References
-
 - https://blog.ptsecurity.com/2012/09/writing-linux-security-module.html
 - https://www.maketecheasier.com/build-custom-kernel-ubuntu/
 - https://elixir.bootlin.com
