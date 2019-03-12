@@ -1,5 +1,6 @@
 config SECURITY_LSPROBE
-bool "Security probe"
-default n
-help
-  A permissive linux security module for logging security ops.
+	bool "Security probe"
+	depends on SECURITY
+	default n
+	help
+	  A permissive linux security module for logging security ops.

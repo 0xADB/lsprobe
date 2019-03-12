@@ -26,13 +26,14 @@ cd ./security/
 git clone https://github.com/0xADB/lsprobe.git && rm -rf ./lsprobe/.git
 cd ..
 ```
-Add to `security/Kconfig`:
+Integrate lsprobe to build process:
+- Add to `security/Kconfig`:
 ```
 source "security/integrity/Kconfig"
 source "security/lsprobe/Kconfig" # <-- this line
 
 ```
-Add to `security/Makefile`:
+- Add to `security/Makefile`:
 ```
 subdir-$(CONFIG_SECURITY_YAMA)         += yama
 subdir-$(CONFIG_SECURITY_LSPROBE)      += lsprobe # <--this line
@@ -41,6 +42,25 @@ subdir-$(CONFIG_SECURITY_LSPROBE)      += lsprobe # <--this line
 
 obj-$(CONFIG_SECURITYFS)               += inode.o
 obj-$(CONFIG_SECURITY_LSPROBE)         += lsprobe/ # <-- and this line
+```
+Integrate lsprobe to boot process:
+- add to `include/linux/lsm_hooks.h`
+```
+#ifdef CONFIG_SECURITY_YAMA
+extern void __init yama_add_hooks(void);
+#else
+static inline void __init yama_add_hooks(void) { }
+#endif
+#ifdef CONFIG_SECURITY_LSPROBE			      // these lines
+extern void __init lsprobe_add_hooks(void);	      //
+#else						      //
+static inline void __init lsprobe_add_hooks(void) { } //
+#endif						      //
+```
+- insert into `security_init` function in `security/security.c`:
+```
+yama_add_hooks();
+lsprobe_add_hooks(); // this line
 ```
 
 ### Configuration
@@ -101,3 +121,5 @@ make: *** [deb-pkg] Error 2
 - https://elixir.bootlin.com
 - http://dazuko.dnsalias.org
 - https://kernelnewbies.org/KernelBuild
+- https://thibaut.sautereau.fr/2017/05/26/linux-security-modules-part-1
+- https://thibaut.sautereau.fr/2017/05/26/linux-security-modules-part-2

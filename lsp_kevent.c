@@ -94,7 +94,7 @@ void lsp_keventq_clear(void)
 
 // ---------------------------------------------------------------------------
 
-lsp_kevent_t * lsp_kevent_get(struct file * file)
+lsp_kevent_t * lsp_kevent_push(struct file * file)
 {
   lsp_kevent_t * kevent = kmem_cache_alloc(lsp_kevent_cache, GFP_KERNEL);
   if (unlikely(!kevent))
