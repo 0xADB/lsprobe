@@ -37,23 +37,8 @@ static struct security_hook_list lsp_hooks[] __lsm_ro_after_init =
 
 void __init lsprobe_add_hooks(void)
 {
-  int err = 0;
-  err = lsp_dev_init();
-  if (unlikely(err))
-  {
-    pr_err("lsprobe: unable to register device: %d\n", err);
-    return;
-  }
   security_add_hooks(lsp_hooks, ARRAY_SIZE(lsp_hooks), "lsprobe");
   pr_info("lsprobe: loaded\n");
-}
-
-// ---------------------------------------------------------------------------
-
-void __exit lsprobe_exit(void)
-{
-  lsp_dev_exit();
-  pr_info("lsprobe: unloaded\n");
 }
 
 // ----------------------------------------------------------------------------
