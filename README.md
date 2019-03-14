@@ -1,6 +1,6 @@
 # lsprobe
 
-A toy permissive linux security module for security ops researching.
+A toy permissive linux security module for security ops research.
 
 ## Building
 ### Prerequisites
