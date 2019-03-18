@@ -44,6 +44,11 @@ static inline lsp_event_field_t * lsp_event_field_first(lsp_event_t * event)
   return (lsp_event_field_t *)(event->data);
 }
 
+static inline const lsp_event_field_t * lsp_event_field_first_const (const lsp_event_t * event)
+{
+  return (const lsp_event_field_t *)(event->data);
+}
+
 static inline lsp_event_field_t * lsp_event_field_next(lsp_event_field_t * field)
 {
   // since we don't know the value[] size
@@ -51,9 +56,16 @@ static inline lsp_event_field_t * lsp_event_field_next(lsp_event_field_t * field
   return (lsp_event_field_t *)(field + sizeof(uint32_t) + sizeof(uint32_t) + field->size);
 }
 
+static inline const lsp_event_field_t * lsp_event_field_next_const (const lsp_event_field_t * field)
+{
+  // since we don't know the value[] size
+  //                      number              size         value
+  return (const lsp_event_field_t *)(field + sizeof(uint32_t) + sizeof(uint32_t) + field->size);
+}
+
 static inline const lsp_event_field_t * lsp_event_field_end(const lsp_event_t * event)
 {
-  return (lsp_event_field_t *)(event->data + event->data_size);
+  return (const lsp_event_field_t *)(event->data + event->data_size);
 }
 
 static inline lsp_event_field_t * lsp_event_field_get(lsp_event_t * event, uint32_t number)
@@ -67,6 +79,25 @@ static inline lsp_event_field_t * lsp_event_field_get(lsp_event_t * event, uint3
     while(number > 0 && field < field_end)
     {
       field = lsp_event_field_next(field);
+      --number;
+    }
+    if (number)
+      field = NULL;
+  }
+  return field;
+}
+
+static inline const lsp_event_field_t * lsp_event_field_get_const (const lsp_event_t * event, uint32_t number)
+{
+  const lsp_event_field_t * field_end = NULL;
+  const lsp_event_field_t * field = NULL;
+  if (event)
+  {
+    field_end = lsp_event_field_end(event);
+    field = lsp_event_field_first_const(event);
+    while(number > 0 && field < field_end)
+    {
+      field = lsp_event_field_next_const(field);
       --number;
     }
     if (number)
