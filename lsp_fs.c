@@ -69,7 +69,7 @@ static int lsp_fs_events_open(struct inode *inode, struct file *file)
 static int lsp_fs_events_release(struct inode *inode, struct file *file)
 {
   lsp_listenerq_remove(current->tgid);
-  BUG_ON(file->private_data);
+  BUG_ON(!file->private_data);
   if (file->private_data)
   {
     kfree(file->private_data);

@@ -19,26 +19,31 @@ DECLARE_WAIT_QUEUE_HEAD(lsp_kevent_available);
 
 // ---------------------------------------------------------------------------
 
-static inline lsp_kevent_t * lsp_kevent_construct(lsp_kevent_t * kevent, struct file * file)
-{
-  *kevent =
-    (lsp_kevent_t)
-    {
-      .file = get_file(file)
-      , .p_file = get_task_exe_file(current)
-      , .p_cred = get_cred(current->cred)
-    };
-  return kevent;
-}
-
-// ---------------------------------------------------------------------------
-
 static inline void lsp_kevent_destruct(lsp_kevent_t * kevent)
 {
   BUG_ON(!kevent);
   if (kevent->file) fput(kevent->file);
   if (kevent->p_file) fput(kevent->p_file);
   if (kevent->p_cred) put_cred(kevent->p_cred);
+}
+
+// ---------------------------------------------------------------------------
+
+static inline lsp_kevent_t * lsp_kevent_construct(lsp_kevent_t * kevent, struct file * file)
+{
+  INIT_LIST_HEAD(&kevent->list_node);
+  kevent->file = get_file(file);
+  kevent->p_file = get_task_exe_file(current);
+  kevent->p_cred = get_cred(current->cred);
+  kevent->code = LSP_EVENT_CODE_NONE;
+  kevent->tgid = 0;
+
+  if (unlikely(!kevent->file || !kevent->p_file || !kevent->p_cred))
+  {
+    lsp_kevent_destruct(kevent);
+    kevent = NULL;
+  }
+  return kevent;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +104,13 @@ lsp_kevent_t * lsp_kevent_push(struct file * file)
   lsp_kevent_t * kevent = kmem_cache_alloc(lsp_kevent_cache, GFP_KERNEL);
   if (unlikely(!kevent))
     return ERR_PTR(-ENOMEM);
-  return lsp_keventq_add(lsp_kevent_construct(kevent, file));
+
+  if (unlikely(!lsp_kevent_construct(kevent, file)))
+  {
+    kmem_cache_free(lsp_kevent_cache, kevent);
+    return NULL;
+  }
+  return lsp_keventq_add(kevent);
 }
 
 // ---------------------------------------------------------------------------
@@ -147,20 +158,23 @@ void lsp_kevent_cache_destroy(void)
 // ---------------------------------------------------------------------------
 
 //! copies to user and shifts to the next field
-static lsp_event_field_t __user * lsp_kevent_serialize_field_to_user(const char * from, uint32_t size, uint32_t number, lsp_event_field_t __user * field, uint32_t avail_size)
+static char __user * lsp_kevent_serialize_field_to_user(const char * from, uint32_t size, uint32_t number, char __user * field, uint32_t avail_size)
 {
-  if (sizeof(number) + sizeof(size) + size <= avail_size)
+  BUG_ON(!from);
+  BUG_ON(!field);
+  if (sizeof(uint32_t) + sizeof(uint32_t) + size <= avail_size)
   {
     size_t err =
-      copy_to_user(&field->number, &number, sizeof(number))
-      + copy_to_user(&field->size, &size, sizeof(size))
-      + copy_to_user(field->value, from, size);
+      copy_to_user(field, &number, sizeof(uint32_t))
+      + copy_to_user(field + sizeof(uint32_t), &size, sizeof(uint32_t))
+      + copy_to_user(field + 2 * sizeof(uint32_t), from, size);
     if (unlikely(err))
     {
       pr_warn("%s: failed to write an event field\n", __func__);
       return ERR_PTR(-EFAULT);
     }
-    return lsp_event_field_next(field);
+    pr_debug("lsprobe: %s: copied: [%u][%s]\n", __func__, size, from);
+    return (field + 2 * sizeof(uint32_t) + size);
   }
   pr_warn("%s: not enough space [%u] to store the value of [%lu] bytes\n"
       , __func__
@@ -174,11 +188,12 @@ static lsp_event_field_t __user * lsp_kevent_serialize_field_to_user(const char 
 
 ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_t buffer_size, char __user * dst, size_t avail_size)
 {
-  lsp_event_field_t __user * field = NULL;
+  char __user * field = NULL;
   lsp_event_t __user * event = NULL;
   char * value = NULL;
   size_t value_size = 0;
 
+  BUG_ON(!kevent);
   if (unlikely(!kevent || !buffer || !dst))
     return -EINVAL;
 
@@ -189,34 +204,66 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
   event->gid = __kgid_val(current->cred->fsgid);
   event->data_size = 0;
   event->field_count = 0;
+  field = event->data;
 
   // --- filename
-  value = d_path(&kevent->file->f_path, buffer, buffer_size);
-  if (unlikely(IS_ERR(value)))
-    return PTR_ERR(value);
+  if (kevent->file)
+  {
+    value = d_path(&kevent->file->f_path, buffer, buffer_size);
+    if (value && !IS_ERR(value))
+    {
+      value_size = strnlen(value, buffer_size) + 1;
+      pr_info("lsprobe: %s: filename: %s\n", __func__, value);
+      field = lsp_kevent_serialize_field_to_user(value, value_size, 0, field, avail_size);
+      if (unlikely(IS_ERR(field)))
+	return PTR_ERR(field);
 
-  value_size = strnlen(value, buffer_size) + 1;
-  field = lsp_kevent_serialize_field_to_user(value, value_size, 0, lsp_event_field_first(event), avail_size);
-  if (unlikely(IS_ERR(field)))
-    return PTR_ERR(field);
+      event->data_size += value_size;
+      event->field_count++;
+      avail_size -= value_size;
+    }
+    else
+    {
+      pr_err("lsprobe: %s: d_path on filename failed\n", __func__);
+      return (value ? PTR_ERR(value) : -EFAULT);
+    }
+  }
+  else
+  {
+    pr_err("lsprobe: %s: no file specified\n", __func__);
+    return -EFAULT;
+  }
 
-  event->data_size += value_size;
-  event->field_count++;
-  avail_size -= value_size;
+  if (kevent->p_file)
+  {
+    // --- issuer
+    value = d_path(&kevent->p_file->f_path, buffer, buffer_size);
+    if (unlikely(IS_ERR(value)))
+      return PTR_ERR(value);
 
-  // --- issuer
-  value = d_path(&kevent->file->f_path, buffer, buffer_size);
-  if (unlikely(IS_ERR(value)))
-    return PTR_ERR(value);
+    if (value && !IS_ERR(value))
+    {
+      value_size = strnlen(value, buffer_size) + 1;
+      pr_info("lsprobe: %s: process: %s\n", __func__, value);
+      field = lsp_kevent_serialize_field_to_user(value, value_size, 1, field, avail_size);
+      if (unlikely(IS_ERR(field)))
+	return PTR_ERR(field);
 
-  value_size = strnlen(value, buffer_size) + 1;
-  field = lsp_kevent_serialize_field_to_user(value, value_size, 1, field, avail_size);
-  if (unlikely(IS_ERR(field)))
-    return PTR_ERR(field);
-
-  event->data_size += value_size;
-  event->field_count++;
-  avail_size -= value_size;
+      event->data_size += value_size;
+      event->field_count++;
+      avail_size -= value_size;
+    }
+    else
+    {
+      pr_err("lsprobe: %s: d_path on process failed\n", __func__);
+      return (value ? PTR_ERR(value) : -EFAULT);
+    }
+  }
+  else
+  {
+    pr_err("lsprobe: %s: no file specified\n", __func__);
+    return -EFAULT;
+  }
 
   return event->data_size;
 }
