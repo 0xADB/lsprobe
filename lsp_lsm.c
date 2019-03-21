@@ -13,7 +13,14 @@
 
 static bool lsp_gotta_push(struct file * file)
 {
-  return !lsp_listenerq_exists(current->tgid);
+  return (
+      !(current->flags & PF_KTHREAD)
+      && !lsp_listenerq_exists(current->tgid)
+      && file != NULL
+      && file->f_path.dentry != NULL
+      && file->f_path.mnt != NULL
+      && S_ISREG(file->f_path.dentry->d_inode->i_mode)
+      );
 }
 
 // ----------------------------------------------------------------------------

@@ -206,64 +206,62 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
   event->field_count = 0;
   field = event->data;
 
+  value = "no_file";
   // --- filename
-  if (kevent->file)
+  if (kevent->file && kevent->file->f_path.mnt && kevent->file->f_path.dentry)
   {
     value = d_path(&kevent->file->f_path, buffer, buffer_size);
-    if (value && !IS_ERR(value))
+    if (unlikely(IS_ERR(value)))
     {
-      value_size = strnlen(value, buffer_size) + 1;
-      pr_info("lsprobe: %s: filename: %s\n", __func__, value);
-      field = lsp_kevent_serialize_field_to_user(value, value_size, 0, field, avail_size);
-      if (unlikely(IS_ERR(field)))
-	return PTR_ERR(field);
-
-      event->data_size += value_size;
-      event->field_count++;
-      avail_size -= value_size;
-    }
-    else
-    {
-      pr_err("lsprobe: %s: d_path on filename failed\n", __func__);
-      return (value ? PTR_ERR(value) : -EFAULT);
+      pr_err("lsprobe: %s: d_path on filename failed: %ld\n", __func__, PTR_ERR(value));
+      value = "error";
     }
   }
   else
   {
     pr_err("lsprobe: %s: no file specified\n", __func__);
-    return -EFAULT;
   }
 
-  if (kevent->p_file)
+  value_size = strnlen(value, buffer_size) + 1;
+
+  pr_info("lsprobe: %s: filename: %s\n", __func__, value);
+
+  field = lsp_kevent_serialize_field_to_user(value, value_size, 0, field, avail_size);
+  if (unlikely(IS_ERR(field)))
+    return PTR_ERR(field);
+
+  event->data_size += value_size;
+  event->field_count++;
+  avail_size -= value_size;
+
+  value = "no_process";
+
+  if (kevent->p_file && kevent->p_file->f_path.mnt && kevent->p_file->f_path.dentry)
   {
     // --- issuer
     value = d_path(&kevent->p_file->f_path, buffer, buffer_size);
     if (unlikely(IS_ERR(value)))
-      return PTR_ERR(value);
-
-    if (value && !IS_ERR(value))
     {
-      value_size = strnlen(value, buffer_size) + 1;
-      pr_info("lsprobe: %s: process: %s\n", __func__, value);
-      field = lsp_kevent_serialize_field_to_user(value, value_size, 1, field, avail_size);
-      if (unlikely(IS_ERR(field)))
-	return PTR_ERR(field);
-
-      event->data_size += value_size;
-      event->field_count++;
-      avail_size -= value_size;
-    }
-    else
-    {
-      pr_err("lsprobe: %s: d_path on process failed\n", __func__);
-      return (value ? PTR_ERR(value) : -EFAULT);
+      pr_err("lsprobe: %s: d_path on process failed: %ld\n", __func__, PTR_ERR(value));
+      value = "error";
     }
   }
   else
   {
-    pr_err("lsprobe: %s: no file specified\n", __func__);
-    return -EFAULT;
+    pr_err("lsprobe: %s: no process specified\n", __func__);
   }
+
+  value_size = strnlen(value, buffer_size) + 1;
+
+  pr_info("lsprobe: %s: process: %s\n", __func__, value);
+
+  field = lsp_kevent_serialize_field_to_user(value, value_size, 1, field, avail_size);
+  if (unlikely(IS_ERR(field)))
+    return PTR_ERR(field);
+
+  event->data_size += value_size;
+  event->field_count++;
+  avail_size -= value_size;
 
   return event->data_size;
 }
