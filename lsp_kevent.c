@@ -35,7 +35,7 @@ static inline lsp_kevent_t * lsp_kevent_construct(lsp_kevent_t * kevent, struct 
   kevent->file = get_file(file);
   kevent->p_file = get_task_exe_file(current);
   kevent->p_cred = get_cred(current->cred);
-  kevent->code = LSP_EVENT_CODE_NONE;
+  kevent->code = LSP_EVENT_CODE_OPEN;
   kevent->tgid = 0;
 
   if (unlikely(!kevent->file || !kevent->p_file || !kevent->p_cred))
@@ -173,7 +173,6 @@ static char __user * lsp_kevent_serialize_field_to_user(const char * from, uint3
       pr_warn("%s: failed to write an event field\n", __func__);
       return ERR_PTR(-EFAULT);
     }
-    pr_debug("lsprobe: %s: copied: [%u][%s]\n", __func__, size, from);
     return (field + 2 * sizeof(uint32_t) + size);
   }
   pr_warn("%s: not enough space [%u] to store the value of [%lu] bytes\n"
@@ -200,8 +199,8 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
   event = (lsp_event_t __user *)dst;
   event->code = kevent->code;
   event->pid = kevent->tgid;
-  event->uid = __kuid_val(current->cred->fsuid);
-  event->gid = __kgid_val(current->cred->fsgid);
+  event->uid = __kuid_val(current->cred->uid);
+  event->gid = __kgid_val(current->cred->gid);
   event->data_size = 0;
   event->field_count = 0;
   field = event->data;
@@ -222,9 +221,7 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
     pr_err("lsprobe: %s: no file specified\n", __func__);
   }
 
-  value_size = strnlen(value, buffer_size) + 1;
-
-  pr_info("lsprobe: %s: filename: %s\n", __func__, value);
+  value_size = strnlen(value, buffer_size - 1) + 1;
 
   field = lsp_kevent_serialize_field_to_user(value, value_size, 0, field, avail_size);
   if (unlikely(IS_ERR(field)))
@@ -251,9 +248,7 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
     pr_err("lsprobe: %s: no process specified\n", __func__);
   }
 
-  value_size = strnlen(value, buffer_size) + 1;
-
-  pr_info("lsprobe: %s: process: %s\n", __func__, value);
+  value_size = strnlen(value, buffer_size - 1) + 1;
 
   field = lsp_kevent_serialize_field_to_user(value, value_size, 1, field, avail_size);
   if (unlikely(IS_ERR(field)))
@@ -263,7 +258,7 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
   event->field_count++;
   avail_size -= value_size;
 
-  return event->data_size;
+  return (sizeof(event) + event->data_size);
 }
 
 // ---------------------------------------------------------------------------

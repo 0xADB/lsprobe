@@ -102,12 +102,15 @@ static ssize_t lsp_fs_events_read(struct file *file, char __user * dst, size_t a
     return -EINVAL;
   }
 
-  while (lsp_keventq_empty())
+  while (lsp_keventq_empty() && !atomic_read(&lsp_release))
   {
     if (unlikely(file->f_flags & O_NONBLOCK))
       return -EAGAIN;
-    wait_event_interruptible(lsp_kevent_available, (!lsp_keventq_empty()));
+    wait_event_interruptible(lsp_kevent_available, (!lsp_keventq_empty() || atomic_read(&lsp_release)));
   }
+
+  if (atomic_read(&lsp_release))
+    return 0;
 
   kevent = lsp_keventq_pop();
   if (unlikely(!kevent))
@@ -131,6 +134,7 @@ static ssize_t lsp_fs_tamper_write(struct file *file, const char __user * buf, s
   if (unlikely(copy_from_user(&value, buf, sizeof(char))))
     return -EFAULT;
   atomic_set(&lsp_release, (int)(value == '1'));
+  pr_info("if you love 'em you let 'em go\n");
   return sizeof(char);
 }
 
