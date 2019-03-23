@@ -221,7 +221,7 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
     pr_err("lsprobe: %s: no file specified\n", __func__);
   }
 
-  value_size = strnlen(value, buffer_size) + 1;
+  value_size = strnlen(value, buffer_size - 1) + 1;
 
   field = lsp_kevent_serialize_field_to_user(value, value_size, 0, field, avail_size);
   if (unlikely(IS_ERR(field)))
@@ -248,7 +248,7 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
     pr_err("lsprobe: %s: no process specified\n", __func__);
   }
 
-  value_size = strnlen(value, avsail_size) + 1;
+  value_size = strnlen(value, buffer_size - 1) + 1;
 
   field = lsp_kevent_serialize_field_to_user(value, value_size, 1, field, avail_size);
   if (unlikely(IS_ERR(field)))
