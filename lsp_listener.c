@@ -15,10 +15,6 @@ typedef struct
 
 // ---------------------------------------------------------------------------
 
-atomic_t lsp_listener_count = ATOMIC_INIT(0);
-
-// ---------------------------------------------------------------------------
-
 static LIST_HEAD(lsp_listenerq);
 static DEFINE_SPINLOCK(lsp_listenerq_lock);
 
@@ -56,7 +52,6 @@ int lsp_listenerq_add(pid_t tgid)
   if (listener)
   {
     atomic_inc(&listener->count);
-    atomic_inc(&lsp_listener_count);
     return 0;
   }
 
@@ -70,7 +65,6 @@ int lsp_listenerq_add(pid_t tgid)
   spin_lock(&lsp_listenerq_lock);
   list_add(&listener->list_node, &lsp_listenerq);
   spin_unlock(&lsp_listenerq_lock);
-  atomic_inc(&lsp_listener_count);
 
   pr_info("lsprobe: added listener: %ld\n", (long)listener->tgid);
 
@@ -84,7 +78,6 @@ void lsp_listenerq_remove(pid_t tgid)
   lsp_listener_t * listener = lsp_listenerq_find(tgid);
   if (listener)
   {
-    atomic_dec(&lsp_listener_count);
     if (atomic_dec_and_test(&listener->count))
     {
       spin_lock(&lsp_listenerq_lock);
@@ -94,6 +87,17 @@ void lsp_listenerq_remove(pid_t tgid)
       pr_info("lsprobe: last of %ld left. Farewell, my friend!\n", (long)listener->tgid);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+
+bool lsp_listenerq_empty(void)
+{
+  bool empty = true;
+  spin_lock(&lsp_listenerq_lock);
+  empty = list_empty(&lsp_listenerq);
+  spin_unlock(&lsp_listenerq_lock);
+  return empty;
 }
 
 // ---------------------------------------------------------------------------

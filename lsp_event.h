@@ -38,7 +38,7 @@ typedef struct __attribute__((packed))
   uint32_t egid;   //! effective GID of the task
   uint32_t fsuid;  //! UID for VFS ops
   uint32_t fsgid;  //! GID for VFS ops
-  uint32_t tgid;   //! PID
+  int32_t tgid;   //! PID
 } lsp_cred_t;
 
 typedef struct __attribute__((packed))

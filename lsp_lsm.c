@@ -13,8 +13,7 @@
 
 static bool lsp_gotta_push(struct file * file)
 {
-  return (
-      atomic_read(&lsp_listener_count) 
+  return (!lsp_listenerq_empty()
       && !(current->flags & PF_KTHREAD)
       && !lsp_listenerq_exists(current->tgid)
       && file != NULL

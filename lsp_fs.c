@@ -76,7 +76,7 @@ static int lsp_fs_events_release(struct inode *inode, struct file *file)
     file->private_data = NULL;
   }
 
-  if (atomic_dec_and_test(&lsp_listener_count))
+  if (lsp_listenerq_empty())
   {
     lsp_keventq_clear();
     atomic_set(&lsp_release, 0);
@@ -134,7 +134,7 @@ static ssize_t lsp_fs_tamper_write(struct file *file, const char __user * buf, s
   if (unlikely(copy_from_user(&value, buf, sizeof(char))))
     return -EFAULT;
   atomic_set(&lsp_release, (int)(value == '1'));
-  pr_info("if you love 'em you let 'em go\n");
+  pr_info("lsprobe: if you love 'em you let 'em go\n");
   return sizeof(char);
 }
 
