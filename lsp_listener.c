@@ -65,10 +65,15 @@ int lsp_listenerq_add(pid_t tgid)
     return -ENOMEM;
 
   atomic_set(&listener->count, 1);
+  listener->tgid = tgid;
+
   spin_lock(&lsp_listenerq_lock);
   list_add(&listener->list_node, &lsp_listenerq);
   spin_unlock(&lsp_listenerq_lock);
   atomic_inc(&lsp_listener_count);
+
+  pr_info("lsprobe: added listener: %ld\n", (long)listener->tgid);
+
   return 0;
 }
 
@@ -85,6 +90,8 @@ void lsp_listenerq_remove(pid_t tgid)
       spin_lock(&lsp_listenerq_lock);
       list_del(&listener->list_node);
       spin_unlock(&lsp_listenerq_lock);
+      kfree(listener);
+      pr_info("lsprobe: last of %ld left. Farewell, my friend!\n", (long)listener->tgid);
     }
   }
 }

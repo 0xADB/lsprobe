@@ -24,21 +24,37 @@ static inline void lsp_kevent_destruct(lsp_kevent_t * kevent)
   BUG_ON(!kevent);
   if (kevent->file) fput(kevent->file);
   if (kevent->p_file) fput(kevent->p_file);
-  if (kevent->p_cred) put_cred(kevent->p_cred);
 }
 
 // ---------------------------------------------------------------------------
 
-static inline lsp_kevent_t * lsp_kevent_construct(lsp_kevent_t * kevent, struct file * file)
+static inline void lsp_kevent_fill_cred(lsp_kevent_t * kevent, const struct task_struct * task)
+{
+  const struct cred * cred = get_cred(task->cred);
+  kevent->p_cred.uid   = __kuid_val(cred->uid);
+  kevent->p_cred.gid   = __kgid_val(cred->gid);
+  kevent->p_cred.suid  = __kuid_val(cred->suid);
+  kevent->p_cred.sgid  = __kgid_val(cred->sgid);
+  kevent->p_cred.euid  = __kuid_val(cred->euid);
+  kevent->p_cred.egid  = __kgid_val(cred->egid);
+  kevent->p_cred.fsuid = __kuid_val(cred->fsuid);
+  kevent->p_cred.fsgid = __kgid_val(cred->fsgid);
+  kevent->p_cred.tgid  = task->tgid;
+  put_cred(cred);
+}
+
+static inline lsp_kevent_t * lsp_kevent_construct_file_event(lsp_kevent_t * kevent, lsp_event_code_t code, struct file * file)
 {
   INIT_LIST_HEAD(&kevent->list_node);
-  kevent->file = get_file(file);
-  kevent->p_file = get_task_exe_file(current);
-  kevent->p_cred = get_cred(current->cred);
-  kevent->code = LSP_EVENT_CODE_OPEN;
-  kevent->tgid = 0;
 
-  if (unlikely(!kevent->file || !kevent->p_file || !kevent->p_cred))
+  kevent->file = get_file(file);
+
+  kevent->p_file = get_task_exe_file(current);
+  lsp_kevent_fill_cred(kevent, current);
+
+  kevent->code = code;
+
+  if (unlikely(!kevent->file || !kevent->p_file))
   {
     lsp_kevent_destruct(kevent);
     kevent = NULL;
@@ -105,7 +121,7 @@ lsp_kevent_t * lsp_kevent_push(struct file * file)
   if (unlikely(!kevent))
     return ERR_PTR(-ENOMEM);
 
-  if (unlikely(!lsp_kevent_construct(kevent, file)))
+  if (unlikely(!lsp_kevent_construct_file_event(kevent, LSP_EVENT_CODE_FILE_OPEN, file)))
   {
     kmem_cache_free(lsp_kevent_cache, kevent);
     return NULL;
@@ -198,9 +214,7 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
 
   event = (lsp_event_t __user *)dst;
   event->code = kevent->code;
-  event->pid = kevent->tgid;
-  event->uid = __kuid_val(current->cred->uid);
-  event->gid = __kgid_val(current->cred->gid);
+  event->pcred = kevent->p_cred;
   event->data_size = 0;
   event->field_count = 0;
   field = event->data;
@@ -257,6 +271,20 @@ ssize_t lsp_kevent_serialize_to_user(lsp_kevent_t * kevent, char * buffer, size_
   event->data_size += value_size;
   event->field_count++;
   avail_size -= value_size;
+
+  pr_info("lsprobe: tgid[%u] real[%u:%u] saved[%u:%u] eff[%u:%u] fs[%u:%u] : [%u] : %s\n"
+      , event->pcred.tgid
+      , event->pcred.uid
+      , event->pcred.gid
+      , event->pcred.suid
+      , event->pcred.sgid
+      , event->pcred.euid
+      , event->pcred.egid
+      , event->pcred.fsuid
+      , event->pcred.fsgid
+      , event->code
+      , lsp_event_field_first_const(event)->value
+      );
 
   return (sizeof(event) + event->data_size);
 }

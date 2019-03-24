@@ -19,9 +19,8 @@ typedef struct lsp_kevent
   struct list_head list_node;
   struct file * file;
   struct file * p_file;
-  const struct cred * p_cred;
   lsp_event_code_t code;
-  pid_t tgid;
+  lsp_cred_t p_cred;
 } lsp_kevent_t;
 
 // ---------------------------------------------------------------------------

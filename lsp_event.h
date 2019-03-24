@@ -16,7 +16,7 @@ extern "C"
 typedef enum
 {
   LSP_EVENT_CODE_NONE = 0
-  , LSP_EVENT_CODE_OPEN = 1
+  , LSP_EVENT_CODE_FILE_OPEN = 1
 } lsp_event_code_t;
 
 #define LSP_EVENT_MAX_SIZE 16384
@@ -28,22 +28,23 @@ typedef struct __attribute__((packed))
   char value[];    //! storage
 } lsp_event_field_t;
 
-typedef struct lsp_cred __attribute__((packed))
+typedef struct __attribute__((packed))
 {
-  uid_t uid;
-  gid_t gid;
-  uid_t suid;
-  gid_t sgid;
-  uid_t euid;
-  gid_t egid;
-  uid_t fsuid;
-  gid_t fsgid;
+  uint32_t uid;    //! real UID of the task
+  uint32_t gid;    //! real GID of the task
+  uint32_t suid;   //! saved UID of the task
+  uint32_t sgid;   //! saved GID of the task
+  uint32_t euid;   //! effective UID of the task
+  uint32_t egid;   //! effective GID of the task
+  uint32_t fsuid;  //! UID for VFS ops
+  uint32_t fsgid;  //! GID for VFS ops
+  uint32_t tgid;   //! PID
 } lsp_cred_t;
 
 typedef struct __attribute__((packed))
 {
   uint32_t code;        //! op, i.e. OPEN
-  lsp_cred_t cred;
+  lsp_cred_t pcred;      //! issuer credentials
   uint32_t data_size;   //! overall size of data[] field
   uint32_t field_count; //! count of ls_event_field_t elements in the data[] field
   char data[];          //! storage of ls_event_field_t

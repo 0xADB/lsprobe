@@ -14,7 +14,8 @@
 static bool lsp_gotta_push(struct file * file)
 {
   return (
-      !(current->flags & PF_KTHREAD)
+      atomic_read(&lsp_listener_count) 
+      && !(current->flags & PF_KTHREAD)
       && !lsp_listenerq_exists(current->tgid)
       && file != NULL
       && file->f_path.dentry != NULL
@@ -27,7 +28,7 @@ static bool lsp_gotta_push(struct file * file)
 
 static int lsp_file_open(struct file *file, const struct cred *cred)
 {
-  if (atomic_read(&lsp_listener_count) && lsp_gotta_push(file))
+  if (lsp_gotta_push(file))
     lsp_kevent_push(file);
   return 0;
 }
