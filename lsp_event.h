@@ -28,12 +28,22 @@ typedef struct __attribute__((packed))
   char value[];    //! storage
 } lsp_event_field_t;
 
+typedef struct lsp_cred __attribute__((packed))
+{
+  uid_t uid;
+  gid_t gid;
+  uid_t suid;
+  gid_t sgid;
+  uid_t euid;
+  gid_t egid;
+  uid_t fsuid;
+  gid_t fsgid;
+} lsp_cred_t;
+
 typedef struct __attribute__((packed))
 {
   uint32_t code;        //! op, i.e. OPEN
-  uint32_t pid;
-  uint32_t uid;         //! fsuid for file ops
-  uint32_t gid;         //! fsgid for file ops
+  lsp_cred_t cred;
   uint32_t data_size;   //! overall size of data[] field
   uint32_t field_count; //! count of ls_event_field_t elements in the data[] field
   char data[];          //! storage of ls_event_field_t
