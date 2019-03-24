@@ -62,14 +62,12 @@ static inline const lsp_event_field_t * lsp_event_field_first_const (const lsp_e
 static inline lsp_event_field_t * lsp_event_field_next(lsp_event_field_t * field)
 {
   // since we don't know the value[] size value must be the last
-  return (lsp_event_field_t *)(field->value + field->size + 1);
+  return (lsp_event_field_t *)(field->value + field->size);
 }
 
 static inline const lsp_event_field_t * lsp_event_field_next_const (const lsp_event_field_t * field)
 {
-  // since we don't know the value[] size
-  //                      number              size         value
-  return (const lsp_event_field_t *)(field + sizeof(uint32_t) + sizeof(uint32_t) + field->size);
+  return (const lsp_event_field_t *)(field->value + field->size);
 }
 
 static inline const lsp_event_field_t * lsp_event_field_end(const lsp_event_t * event)
