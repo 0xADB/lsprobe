@@ -61,6 +61,9 @@ static int lsp_fs_events_open(struct inode *inode, struct file *file)
   else
     return -ENOMEM;
 
+  if (lsp_listenerq_empty())
+    atomic_set(&lsp_release, 0);
+
   return lsp_listenerq_add(current->tgid);
 }
 
@@ -81,6 +84,8 @@ static int lsp_fs_events_release(struct inode *inode, struct file *file)
     lsp_keventq_clear();
     atomic_set(&lsp_release, 0);
   }
+  else
+    lsp_listenerq_show();
   return 0;
 }
 
@@ -134,7 +139,6 @@ static ssize_t lsp_fs_tamper_write(struct file *file, const char __user * buf, s
   if (unlikely(copy_from_user(&value, buf, sizeof(char))))
     return -EFAULT;
   atomic_set(&lsp_release, (int)(value == '1'));
-  pr_info("lsprobe: if you love 'em you let 'em go\n");
   return sizeof(char);
 }
 

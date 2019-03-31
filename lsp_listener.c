@@ -20,6 +20,22 @@ static DEFINE_SPINLOCK(lsp_listenerq_lock);
 
 // ---------------------------------------------------------------------------
 
+void lsp_listenerq_show(void)
+{
+  lsp_listener_t * listener = NULL;
+  lsp_listener_t * l;
+  pr_info("lsprobe: listener list: \n");
+  spin_lock(&lsp_listenerq_lock);
+  list_for_each_entry(l, &lsp_listenerq, list_node)
+  {
+    pr_info("lsprobe:   [%ld] is still here\n", (long)l->tgid);
+  }
+  spin_unlock(&lsp_listenerq_lock);
+  return listener;
+}
+
+// ---------------------------------------------------------------------------
+
 static lsp_listener_t * lsp_listenerq_find(pid_t tgid)
 {
   lsp_listener_t * listener = NULL;
@@ -84,7 +100,7 @@ void lsp_listenerq_remove(pid_t tgid)
       list_del(&listener->list_node);
       spin_unlock(&lsp_listenerq_lock);
       kfree(listener);
-      pr_info("lsprobe: last of %ld left. Farewell, my friend!\n", (long)listener->tgid);
+      pr_info("lsprobe: last of %ld left\n", (long)listener->tgid);
     }
   }
 }
